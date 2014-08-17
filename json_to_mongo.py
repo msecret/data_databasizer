@@ -1,6 +1,15 @@
 #!/usr/bin/python
 # Copyright  Marco Segreto 2014
 
+"""
+Takes a json file and a mongo database collection and inserts the json data
+as documents.
+
+Use:
+json_to_mongo {json file} {collection} '{mongo connection client uri}'
+
+"""
+
 import sys
 import json
 
@@ -18,19 +27,22 @@ def read_file(arg_file):
 
   return json_data
 
-def setup_connection(host, dbase, port=27017):
+def setup_connection(uri):
   """Setup connection to database with host, database name and possible port.
 
   """
-  client = MongoClient(host, port)
-  db = client[dbase]
+  client = MongoClient(uri)
+  db = client.get_default_database()
   return db
 
-def write_to_db(db, data):
+def write_to_db(db, data, db_collection):
   """Write data to the db and return ids, or errors if there were any
 
   """
-  collection = db['comments']
+  print db
+  collection = db[db_collection]
+  if collection is None:
+    return None, Exception("Collection was not given.")
   ids = []
   try:
     for doc in data:
@@ -48,13 +60,11 @@ def parse_args(args):
   ret_args = {}
   num_args  = len(sys.argv)
   if num_args < 2:
-    sys.exit("Not enough arguments")
+    sys.exit("Not enough arguments, need at least file and collection.")
 
   ret_args['file'] = args[1]
-  ret_args['db_host'] = args[2]
-  ret_args['db_dbase'] = args[3]
-  if num_args > 4:
-    ret_args['db_port'] = str(args[4])
+  ret_args['db_collection'] = args[2]
+  ret_args['db_connect'] = args[3]
 
   return ret_args
 
@@ -64,9 +74,9 @@ def main():
 
   file_data = read_file(args['file'])
 
-  db = setup_connection(args['db_host'], args['db_dbase'])
+  db = setup_connection(args['db_connect'])
 
-  success, failure = write_to_db(db, file_data)
+  success, failure = write_to_db(db, file_data, args['db_collection'])
   print success, failure
 
 if __name__ == "__main__":
